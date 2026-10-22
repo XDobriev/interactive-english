@@ -1,32 +1,95 @@
-# React + TypeScript + Vite
+# Interactive English Studio (ProgressMe Alternative)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> Интерактивная платформа для онлайн-преподавания английского языка с поддержкой нейросети **Google Gemini AI**.
+> Полноценный виртуальный класс реального времени, конструктор уроков, интерактивный словарь, расписание и домашние задания.
 
-Currently, two official plugins are available:
+🌐 **Демонстрация онлайн:** [https://xdobriev.github.io/interactive-english/](https://xdobriev.github.io/interactive-english/)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 🌟 Ключевые возможности
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. 🎓 Интерактивный виртуальный класс (Classroom Runner)
+- **Синхронизация ролей:** мгновенное переключение между «Преподаватель» (с методическими подсказками, готовыми ответами и заметками) и «Вид ученика» (чистый интерфейс выполнения).
+- **Инструменты преподавателя:**
+  - ⏱️ Интерактивный таймер выполнения заданий.
+  - 📝 Виртуальная доска со стикерами.
+  - 💬 Живой чат занятия.
+  - 🔗 Копирование персональной ссылки для мгновенного подключения ученика.
+- **Интерактивный словарь урока:**
+  - Озвучка слов на чистом британском/американском английском (Web Speech API).
+  - Транскрипция, перевод, часть речи и контекстный пример.
+  - Интерактивный тренажер карточек (Word Trainer).
+- **Встроенный AI-Ассистент (Gemini):**
+  - Объяснение грамматических правил простыми словами.
+  - Генерация дополнительных жизненных примеров.
+  - Проверка предложений ученика с разбором типичных ошибок.
+  - Методические подсказки преподавателю.
 
-## Expanding the Oxlint configuration
+### 2. ⚡ Конструктор уроков и AI-Генерация (Lesson Studio)
+- **Мгновенное создание урока с Gemini AI:** введите тему и выберите уровень (A1–C1) — через 3 секунды готов полный 4-секционный урок с лексикой, текстами и упражнениями.
+- **6 типов интерактивных заданий:**
+  1. `media_rule` — правила, диалоги с озвучкой и вопросы для обсуждения (Speaking output).
+  2. `match_pairs` — сопоставление терминов и значений с подсветкой и звуковыми эффектами.
+  3. `fill_blanks` — заполнение пропусков в контексте с проверкой регистра и подсказками.
+  4. `word_order` — сборка предложений из рассыпанных слов.
+  5. `quiz` — тесты с выбором одного/нескольких вариантов и подробным объяснением.
+  6. `flashcards` — 3D-переворачивающиеся двусторонние карточки для тренировки памяти.
+- **Генератор упражнений:** создание любого отдельного типа задания по заданной теме и уровню прямо в конструкторе.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+### 3. 👥 Управление учениками, расписание и домашние задания
+- **Ученики:** карточки студентов с уровнем CEFR, контактами, балансом уроков и кнопкой мгновенного перехода в класс.
+- **Расписание:** интерактивный недельный календарь с расписанием уроков.
+- **Домашние задания:** назначение ДЗ, просмотр ответов ученика, автоматический подсчет баллов и поле для комментариев преподавателя.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+### 4. 📱 Адаптивный дизайн
+- Оптимизирован для всех экранов:
+  - Настольные ПК и мониторы 4K / Ultrawide.
+  - Ноутбуки (13"–16") со сжатием и скрытием избыточных надписей в шапке.
+  - Планшеты (iPad / Android): выделенная панель вкладок «План / Урок / Словарь».
+  - Смартфоны: одноколоночный режим и полноразмерные интерактивные блоки.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 🛠️ Стек технологий
+
+- **Фреймворк:** React 19 + TypeScript
+- **Сборщик:** Vite 8 (HMR, мгновенная сборка ~1.2s)
+- **Стилизация:** Vanilla CSS + Design System tokens (Plus Jakarta Sans, Inter, современные градиенты и микроанимации)
+- **Иконки:** Lucide React
+- **Искусственный интеллект:** Google Gemini Flash API (`@google/genai`)
+- **Звук и аудио:** Web Audio API (звуковые эффекты успеха, ошибок и кликов) + Web Speech API (натуральный синтез английской речи)
+- **Деплой:** GitHub Actions + GitHub Pages
+
+---
+
+## 🚀 Запуск локально
+
+1. Клонируйте репозиторий:
+   ```bash
+   git clone https://github.com/XDobriev/interactive-english.git
+   cd interactive-english
+   ```
+
+2. Установите зависимости:
+   ```bash
+   npm install
+   ```
+
+3. (Опционально) Настройте ключ Gemini API:
+   Создайте файл `.env.local`:
+   ```env
+   VITE_GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+   *Либо укажите свой ключ прямо в интерфейсе платформы (он сохранится в защищенном localStorage браузера).*
+
+4. Запустите сервер разработки:
+   ```bash
+   npm run dev
+   ```
+   Откройте [http://localhost:5173](http://localhost:5173).
+
+5. Сборка для продакшена:
+   ```bash
+   npm run build
+   ```
