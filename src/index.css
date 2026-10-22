@@ -1198,8 +1198,16 @@ html, body {
   }
 }
 
+/* Exercises default styling */
+.pairs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
 /* --------------------------------------------------------------------------
-   BREAKPOINT: <= 768px (Mobile Phones)
+   BREAKPOINT: <= 768px (Mobile Phones & Small Tablets)
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   .dashboard-lessons-grid {
@@ -1214,8 +1222,8 @@ html, body {
   }
 
   .topbar {
-    padding: 0 12px !important;
-    min-height: 60px !important;
+    padding: 0 10px !important;
+    min-height: 56px !important;
   }
 
   .brand-subname {
@@ -1223,10 +1231,10 @@ html, body {
   }
 
   .lesson-meta-box .lesson-name {
-    max-width: 110px;
+    max-width: 100px;
   }
 
-  /* Exercises responsive adjustments */
+  /* Exercises responsive adjustments: single column on mobile */
   .pairs-grid {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
@@ -1236,4 +1244,61 @@ html, body {
     height: 240px !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   BREAKPOINT: <= 480px (Compact Mobile Screens e.g. iPhone SE 375px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .classroom-topbar {
+    padding: 0 6px !important;
+    gap: 4px !important;
+    min-height: 52px !important;
+  }
+
+  .classroom-topbar .topbar-left {
+    gap: 4px !important;
+  }
+
+  .lesson-meta-box .lesson-name {
+    display: none !important;
+  }
+
+  .classroom-topbar .topbar-right {
+    gap: 3px !important;
+  }
+
+  .classroom-tools-pill {
+    padding: 2px !important;
+    gap: 1px !important;
+    border-radius: 8px !important;
+  }
+
+  .classroom-tool-btn {
+    padding: 5px 6px !important;
+    border-radius: 6px !important;
+  }
+
+  .classroom-role-switch {
+    padding: 2px !important;
+    border-radius: 8px !important;
+  }
+
+  .classroom-role-switch .seg-button {
+    padding: 5px 6px !important;
+    border-radius: 6px !important;
+  }
+
+  .topbar-finish-btn {
+    padding: 5px 8px !important;
+  }
+
+  .btn-ai-assistant {
+    padding: 5px 6px !important;
+  }
+
+  .topbar-answers-btn {
+    padding: 5px 6px !important;
+  }
+}
+
 

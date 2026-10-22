@@ -25,8 +25,8 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
     : [];
   const pairs: MatchPairItem[] = rawPairs.map((p: any, idx: number) => ({
     id: p.id || `pair-${idx}`,
-    leftText: p.leftText ?? p.left ?? '',
-    rightText: p.rightText ?? p.right ?? '',
+    leftText: p.leftText ?? p.left ?? p.term ?? p.english ?? '',
+    rightText: p.rightText ?? p.right ?? p.definition ?? p.translation ?? p.russian ?? '',
   }));
 
   useEffect(() => {
@@ -79,27 +79,20 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
     setMatchedPairs(new Set());
     setSelectedLeft(null);
     setErrorPair(null);
-    setShuffledRight([...data.pairs].sort(() => Math.random() - 0.5));
+    setShuffledRight([...pairs].sort(() => Math.random() - 0.5));
   };
 
-  const isAllMatched = matchedPairs.size === data.pairs.length;
+  const isAllMatched = pairs.length > 0 && matchedPairs.size === pairs.length;
 
   return (
     <div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '20px',
-          marginBottom: '20px',
-        }}
-      >
+      <div className="pairs-grid">
         {/* Left Column (Terms) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-light)', textTransform: 'uppercase' }}>
             Английские выражения
           </div>
-          {data.pairs.map((item) => {
+          {pairs.map((item) => {
             const isMatched = matchedPairs.has(item.id);
             const isSelected = selectedLeft === item.id;
             const isError = errorPair?.left === item.id;
@@ -125,6 +118,8 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
             return (
               <div
                 key={item.id}
+                data-pair-id={item.id}
+                className="match-pair-btn match-pair-left"
                 onClick={() => handleLeftClick(item.id)}
                 style={{
                   padding: '14px 18px',
@@ -176,6 +171,8 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
             return (
               <div
                 key={item.id}
+                data-pair-id={item.id}
+                className="match-pair-btn match-pair-right"
                 onClick={() => handleRightClick(item)}
                 style={{
                   padding: '14px 18px',
