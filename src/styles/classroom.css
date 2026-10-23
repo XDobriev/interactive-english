@@ -1,0 +1,383 @@
+/* Classroom layout: panels, banner, exercise boxes, vocabulary, buttons, flashcards, animations */
+/* Card Panel (Sidebars) */
+.card-panel {
+  background: var(--surface-white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+.panel-heading {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1.5px solid transparent;
+}
+.plan-item:hover {
+  background: var(--surface-subtle);
+}
+.plan-item.active {
+  background: var(--primary-subtle);
+  border-color: var(--primary-border);
+}
+.plan-index {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #e2e8f0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.plan-item.active .plan-index {
+  background: var(--primary);
+  color: #ffffff;
+}
+.plan-item.done .plan-index {
+  background: var(--success);
+  color: #ffffff;
+}
+.plan-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+.plan-item.active .plan-title {
+  color: var(--primary);
+}
+.plan-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* Center Canvas */
+.center-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* Section Banner */
+.section-intro-card {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  color: #ffffff;
+  box-shadow: var(--shadow-float);
+  position: relative;
+  overflow: hidden;
+}
+.section-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c7d2fe;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.section-main-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.section-main-desc {
+  font-size: 14.5px;
+  color: #cbd5e1;
+  max-width: 620px;
+  line-height: 1.6;
+}
+
+/* Exercise Boxes */
+.exercise-box {
+  background: var(--surface-white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+.exercise-box:hover {
+  box-shadow: var(--shadow-float);
+  border-color: var(--border-strong);
+}
+.box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.box-tag {
+  background: var(--primary-subtle);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.box-score {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.box-instruction {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 20px;
+}
+
+/* Right Sidebar: Vocabulary */
+.sidebar-right-card {
+  background: var(--surface-white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  height: fit-content;
+  position: sticky;
+  top: 102px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.vocab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.vocab-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  transition: all 0.15s ease;
+}
+.vocab-card:hover {
+  border-color: var(--primary-border);
+  background: #ffffff;
+  box-shadow: var(--shadow-subtle);
+}
+.vocab-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.vocab-term {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+}
+.speaker-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-white);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+.speaker-button:hover {
+  background: var(--primary-subtle);
+  color: var(--primary);
+  border-color: var(--primary-border);
+  transform: scale(1.1);
+}
+.vocab-phonetic {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 6px;
+}
+.vocab-meaning {
+  font-size: 13.5px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+.vocab-example {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+  line-height: 1.4;
+}
+
+/* Common Button Styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.35);
+}
+
+.btn-secondary {
+  background: var(--surface-white);
+  border-color: var(--border-subtle);
+  color: var(--text-main);
+}
+.btn-secondary:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border-strong);
+}
+
+.btn-danger {
+  background: var(--error-subtle);
+  border-color: var(--error-border);
+  color: var(--error-text);
+}
+.btn-danger:hover {
+  background: #fee2e2;
+}
+
+.btn-teacher {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.btn-teacher:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.btn-action-outline {
+  background: var(--surface-white);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-main);
+}
+.btn-action-outline:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border-strong);
+}
+
+/* Card & Panels */
+.app-card {
+  background: var(--surface-white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+}
+
+/* Flashcard 3D perspective */
+.perspective-container {
+  perspective: 1000px;
+}
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  text-align: center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.flashcard-inner.flipped {
+  transform: rotateY(180deg);
+}
+.flashcard-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-white);
+}
+.flashcard-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  border-color: var(--primary-border);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease forwards;
+}
+
+@keyframes pulseBeacon {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.6; }
+}
