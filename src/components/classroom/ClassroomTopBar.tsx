@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { CEFRLevel, UserRole } from '../../types';
 import { sound } from '../../utils/audio';
+import { useAuth } from '../../context/AuthContext';
 
 interface ClassroomTopBarProps {
   lessonTitle: string;
@@ -56,6 +57,7 @@ export const ClassroomTopBar: React.FC<ClassroomTopBarProps> = ({
   onToggleAiAssistant,
   lessonId,
 }) => {
+  const { permissions } = useAuth();
   const [copiedLink, setCopiedLink] = useState(false);
 
   const handleCopyStudentLink = () => {
@@ -154,8 +156,14 @@ export const ClassroomTopBar: React.FC<ClassroomTopBarProps> = ({
         <div className="segmented-control classroom-role-switch">
           <button
             className={`seg-button ${role === 'teacher' ? 'active' : ''}`}
-            onClick={() => onRoleChange('teacher')}
-            title="Режим преподавателя (с подсказками и ответами)"
+            onClick={() => {
+              if (!permissions.canConductClassroomAsTeacher) {
+                alert('Доступ к подсказкам и ответам учителя ограничен. Авторизуйтесь под профилем преподавателя.');
+                return;
+              }
+              onRoleChange('teacher');
+            }}
+            title={permissions.canConductClassroomAsTeacher ? 'Режим преподавателя (с подсказками и ответами)' : 'Доступно только преподавателю'}
           >
             <BookOpen size={14} />
             <span className="role-text-full">Преподаватель</span>

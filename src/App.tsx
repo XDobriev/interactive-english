@@ -5,6 +5,7 @@ import type { Lesson, UserRole, Student, ScheduleEvent, HomeworkSubmission } fro
 import { TeacherDashboard } from './components/dashboard/TeacherDashboard';
 import { ClassroomRunner } from './components/classroom/ClassroomRunner';
 import { LessonBuilder } from './components/builder/LessonBuilder';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { sound } from './utils/audio';
 
 type AppView = 'dashboard' | 'classroom' | 'builder';
@@ -14,7 +15,9 @@ const STORAGE_STUDENTS = 'interactive_english_students_v2';
 const STORAGE_SCHEDULE = 'interactive_english_schedule_v2';
 const STORAGE_HOMEWORK = 'interactive_english_homework_v2';
 
-export const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { role, user, permissions } = useAuth();
+
   const [lessons, setLessons] = useState<Lesson[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(STORAGE_LESSONS);
@@ -67,9 +70,17 @@ export const App: React.FC = () => {
 
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [activeRole, setActiveRole] = useState<UserRole>('teacher');
+  const [activeRole, setActiveRole] = useState<UserRole>(role);
   const [activeStudentName, setActiveStudentName] = useState<string>('Анна');
   const [editingLesson, setEditingLesson] = useState<Lesson | undefined>(undefined);
+
+  // Sync active role with auth role
+  useEffect(() => {
+    setActiveRole(role);
+    if (user?.role === 'student') {
+      setActiveStudentName(user.name);
+    }
+  }, [role, user]);
 
   // Check URL query parameters for direct student links: ?lesson=unit-b1-travel&role=student
   useEffect(() => {
@@ -82,11 +93,12 @@ export const App: React.FC = () => {
       const found = lessons.find((l) => l.id === lessonParam);
       if (found) {
         setActiveLesson(found);
-        setActiveRole(roleParam === 'student' ? 'student' : 'teacher');
+        const resolvedRole = roleParam === 'student' ? 'student' : role;
+        setActiveRole(resolvedRole);
         setCurrentView('classroom');
       }
     }
-  }, [lessons]);
+  }, [lessons, role]);
 
   // Sync to local storage
   useEffect(() => {
@@ -113,21 +125,33 @@ export const App: React.FC = () => {
     } catch (e) {}
   }, [homeworkSubmissions]);
 
-  const handleStartLesson = (lesson: Lesson, role: UserRole, studentName?: string) => {
+  const handleStartLesson = (lesson: Lesson, targetRole: UserRole, studentName?: string) => {
     sound.playClick();
     setActiveLesson(lesson);
-    setActiveRole(role);
-    if (studentName) setActiveStudentName(studentName);
+    setActiveRole(targetRole);
+    if (studentName) {
+      setActiveStudentName(studentName);
+    } else if (user?.role === 'student') {
+      setActiveStudentName(user.name);
+    }
     setCurrentView('classroom');
   };
 
   const handleEditLesson = (lesson: Lesson) => {
+    if (!permissions.canEditCurriculum) {
+      alert('У вас нет прав преподавателя на редактирование уроков. Переключитесь на аккаунт преподавателя.');
+      return;
+    }
     sound.playClick();
     setEditingLesson(lesson);
     setCurrentView('builder');
   };
 
   const handleCreateLesson = () => {
+    if (!permissions.canEditCurriculum) {
+      alert('У вас нет прав преподавателя на создание уроков. Переключитесь на аккаунт преподавателя.');
+      return;
+    }
     sound.playClick();
     setEditingLesson(undefined);
     setCurrentView('builder');
@@ -146,6 +170,7 @@ export const App: React.FC = () => {
   };
 
   const handleDuplicateLesson = (lesson: Lesson) => {
+    if (!permissions.canEditCurriculum) return;
     sound.playClick();
     const copy: Lesson = {
       ...lesson,
@@ -158,6 +183,7 @@ export const App: React.FC = () => {
   };
 
   const handleDeleteLesson = (lessonId: string) => {
+    if (!permissions.canEditCurriculum) return;
     sound.playClick();
     setLessons(lessons.filter((l) => l.id !== lessonId));
   };
@@ -168,11 +194,11 @@ export const App: React.FC = () => {
   };
 
   const handleAssignHomework = (studentId: string, lessonId: string) => {
+    if (!permissions.canGradeHomework) return;
     const targetStudent = students.find((s) => s.id === studentId);
     const targetLesson = lessons.find((l) => l.id === lessonId);
     if (!targetStudent || !targetLesson) return;
 
-    // Update student homework status
     const updatedStudents = students.map((s) => {
       if (s.id === studentId) {
         return { ...s, homeworkStatus: 'assigned' as const, currentLessonId: lessonId };
@@ -211,7 +237,6 @@ export const App: React.FC = () => {
           studentName={activeStudentName}
           onBackToDashboard={() => {
             sound.playClick();
-            // Clear URL query parameters when returning to dashboard
             if (typeof window !== 'undefined' && window.history.replaceState) {
               window.history.replaceState({}, '', window.location.pathname);
             }
@@ -232,6 +257,14 @@ export const App: React.FC = () => {
         />
       )}
     </div>
+  );
+};
+
+export const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
