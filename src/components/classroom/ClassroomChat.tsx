@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, X, ShieldAlert, Sparkles } from 'lucide-react';
 import type { ChatMessage, UserRole } from '../../types';
+import { syncPost, syncSubscribe } from '../../services/syncChannel';
 import { sound } from '../../utils/audio';
 
 interface ClassroomChatProps {
@@ -24,7 +25,7 @@ export const ClassroomChat: React.FC<ClassroomChatProps> = ({
       if (saved) {
         try {
           return JSON.parse(saved);
-        } catch (e) {}
+        } catch {}
       }
     }
     return [
@@ -42,21 +43,14 @@ export const ClassroomChat: React.FC<ClassroomChatProps> = ({
   const [isCorrectionMode, setIsCorrectionMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Broadcast sync across tabs
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    const channel = new BroadcastChannel(`chat-sync-${lessonId}`);
-
-    channel.onmessage = (event) => {
-      if (event.data.type === 'NEW_MESSAGE') {
-        setMessages(event.data.messages);
-      }
-    };
-
-    return () => {
-      channel.close();
-    };
-  }, [lessonId]);
+  // Sync messages with other tabs/devices
+  useEffect(
+    () =>
+      syncSubscribe<{ type: string; messages: ChatMessage[] }>(`chat-sync-${lessonId}`, (data) => {
+        if (data.type === 'NEW_MESSAGE') setMessages(data.messages);
+      }),
+    [lessonId]
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,14 +59,9 @@ export const ClassroomChat: React.FC<ClassroomChatProps> = ({
   const broadcastMessages = (updated: ChatMessage[]) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch (e) {}
+    } catch {}
 
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    try {
-      const channel = new BroadcastChannel(`chat-sync-${lessonId}`);
-      channel.postMessage({ type: 'NEW_MESSAGE', messages: updated });
-      channel.close();
-    } catch (e) {}
+    syncPost(`chat-sync-${lessonId}`, { type: 'NEW_MESSAGE', messages: updated });
   };
 
   const handleSendMessage = () => {

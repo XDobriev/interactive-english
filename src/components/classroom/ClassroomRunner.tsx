@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { ListOrdered, Layers, BookOpen } from 'lucide-react';
-import type { Lesson, UserRole, VocabWord } from '../../types';
+import type {
+  FillBlanksData,
+  FlashcardsData,
+  Lesson,
+  MatchPairsData,
+  MediaRuleData,
+  QuizData,
+  UserRole,
+  VocabWord,
+  WordOrderData,
+} from '../../types';
 import { ClassroomTopBar } from './ClassroomTopBar';
 import { LessonSidebar } from './LessonSidebar';
 import { VocabularySidebar } from './VocabularySidebar';
@@ -16,6 +26,7 @@ import { WordOrderExercise } from '../exercises/WordOrderExercise';
 import { FlashcardsExercise } from '../exercises/FlashcardsExercise';
 import { QuizExercise } from '../exercises/QuizExercise';
 import { MediaRuleExercise } from '../exercises/MediaRuleExercise';
+import { syncPost, syncSubscribe } from '../../services/syncChannel';
 import { sound } from '../../utils/audio';
 
 interface ClassroomRunnerProps {
@@ -25,6 +36,10 @@ interface ClassroomRunnerProps {
   onBackToDashboard: () => void;
   onUpdateLesson: (updated: Lesson) => void;
 }
+
+type LessonSyncEvent =
+  | { type: 'CHANGE_SECTION'; sectionId: string }
+  | { type: 'TOGGLE_ANSWERS'; showAnswers: boolean };
 
 export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
   lesson,
@@ -48,35 +63,20 @@ export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
-  // Real-time synchronization channel between tabs (e.g. Teacher & Student views)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    const channel = new BroadcastChannel(`lesson-sync-${lesson.id}`);
+  // Real-time sync between the teacher and student views (other tabs, or other devices via the relay)
+  useEffect(
+    () =>
+      syncSubscribe<LessonSyncEvent>(`lesson-sync-${lesson.id}`, (data) => {
+        if (data.type === 'CHANGE_SECTION') {
+          setActiveSectionId(data.sectionId);
+        } else if (data.type === 'TOGGLE_ANSWERS') {
+          setShowAnswers(data.showAnswers);
+        }
+      }),
+    [lesson.id]
+  );
 
-    channel.onmessage = (event) => {
-      const data = event.data;
-      if (data.type === 'CHANGE_SECTION') {
-        setActiveSectionId(data.sectionId);
-      } else if (data.type === 'TOGGLE_ANSWERS') {
-        setShowAnswers(data.showAnswers);
-      }
-    };
-
-    return () => {
-      channel.close();
-    };
-  }, [lesson.id]);
-
-  const broadcastEvent = (eventData: any) => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    try {
-      const channel = new BroadcastChannel(`lesson-sync-${lesson.id}`);
-      channel.postMessage(eventData);
-      channel.close();
-    } catch (e) {
-      // Ignore broadcast errors in sandbox
-    }
-  };
+  const broadcastEvent = (eventData: LessonSyncEvent) => syncPost(`lesson-sync-${lesson.id}`, eventData);
 
   const handleSelectSection = (sectionId: string) => {
     sound.playClick();
@@ -269,7 +269,7 @@ export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
               {exercise.type === 'fill_blanks' && (
                 <FillInBlanksExercise
                   key={exercise.id}
-                  data={exercise.data as any}
+                  data={exercise.data as FillBlanksData}
                   showAnswers={showAnswers}
                 />
               )}
@@ -277,7 +277,7 @@ export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
               {exercise.type === 'match_pairs' && (
                 <MatchPairsExercise
                   key={exercise.id}
-                  data={exercise.data as any}
+                  data={exercise.data as MatchPairsData}
                   showAnswers={showAnswers}
                 />
               )}
@@ -285,7 +285,7 @@ export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
               {exercise.type === 'word_order' && (
                 <WordOrderExercise
                   key={exercise.id}
-                  data={exercise.data as any}
+                  data={exercise.data as WordOrderData}
                   showAnswers={showAnswers}
                 />
               )}
@@ -293,20 +293,20 @@ export const ClassroomRunner: React.FC<ClassroomRunnerProps> = ({
               {exercise.type === 'flashcards' && (
                 <FlashcardsExercise
                   key={exercise.id}
-                  data={exercise.data as any}
+                  data={exercise.data as FlashcardsData}
                 />
               )}
 
               {exercise.type === 'quiz' && (
                 <QuizExercise
-                  data={exercise.data as any}
+                  data={exercise.data as QuizData}
                   showAnswers={showAnswers}
                 />
               )}
 
               {exercise.type === 'media_rule' && (
                 <MediaRuleExercise
-                  data={exercise.data as any}
+                  data={exercise.data as MediaRuleData}
                 />
               )}
 

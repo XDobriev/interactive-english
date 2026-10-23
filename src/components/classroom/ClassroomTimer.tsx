@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Timer, Play, Pause, RotateCcw, X } from 'lucide-react';
+import { syncPost, syncSubscribe } from '../../services/syncChannel';
 import { sound } from '../../utils/audio';
 
 interface ClassroomTimerProps {
@@ -18,40 +19,33 @@ export const ClassroomTimer: React.FC<ClassroomTimerProps> = ({
   const [initialDuration, setInitialDuration] = useState<number>(120);
   const timerRef = useRef<number | null>(null);
 
-  // Sync with student / teacher tab if channel is provided
+  // Sync with the student / teacher view if a channel is provided
   useEffect(() => {
-    if (!broadcastChannelName || typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    const channel = new BroadcastChannel(broadcastChannelName);
-
-    channel.onmessage = (event) => {
-      const data = event.data;
-      if (data.type === 'TIMER_SYNC') {
-        setSecondsLeft(data.secondsLeft);
-        setIsRunning(data.isRunning);
-        setInitialDuration(data.initialDuration);
+    if (!broadcastChannelName) return;
+    return syncSubscribe<{ type: string; secondsLeft: number; isRunning: boolean; initialDuration: number }>(
+      broadcastChannelName,
+      (data) => {
+        if (data.type === 'TIMER_SYNC') {
+          setSecondsLeft(data.secondsLeft);
+          setIsRunning(data.isRunning);
+          setInitialDuration(data.initialDuration);
+        }
       }
-    };
-
-    return () => {
-      channel.close();
-    };
+    );
   }, [broadcastChannelName]);
 
-  const broadcastTimer = (nextSeconds: number, running: boolean, duration: number) => {
-    if (!broadcastChannelName || typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    try {
-      const channel = new BroadcastChannel(broadcastChannelName);
-      channel.postMessage({
+  const broadcastTimer = useCallback(
+    (nextSeconds: number, running: boolean, duration: number) => {
+      if (!broadcastChannelName) return;
+      syncPost(broadcastChannelName, {
         type: 'TIMER_SYNC',
         secondsLeft: nextSeconds,
         isRunning: running,
         initialDuration: duration,
       });
-      channel.close();
-    } catch (e) {
-      // Ignore in sandbox
-    }
-  };
+    },
+    [broadcastChannelName]
+  );
 
   useEffect(() => {
     if (isRunning) {
@@ -75,7 +69,7 @@ export const ClassroomTimer: React.FC<ClassroomTimerProps> = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, initialDuration, isTeacher]);
+  }, [isRunning, initialDuration, isTeacher, broadcastTimer]);
 
   const handleStartPause = () => {
     sound.playClick();

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import type { CEFRLevel, UserRole } from '../../types';
 import { sound } from '../../utils/audio';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/authCore';
 
 interface ClassroomTopBarProps {
   lessonTitle: string;

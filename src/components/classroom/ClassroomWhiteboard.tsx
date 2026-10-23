@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, X, StickyNote, Sparkles } from 'lucide-react';
 import type { WhiteboardNote } from '../../types';
+import { syncPost, syncSubscribe } from '../../services/syncChannel';
 import { sound } from '../../utils/audio';
 
 interface ClassroomWhiteboardProps {
@@ -30,7 +31,7 @@ export const ClassroomWhiteboard: React.FC<ClassroomWhiteboardProps> = ({
       if (saved) {
         try {
           return JSON.parse(saved);
-        } catch (e) {}
+        } catch {}
       }
     }
     return [
@@ -47,33 +48,21 @@ export const ClassroomWhiteboard: React.FC<ClassroomWhiteboardProps> = ({
   const [newNoteText, setNewNoteText] = useState('');
   const [selectedColor, setSelectedColor] = useState<'yellow' | 'blue' | 'green' | 'pink' | 'purple'>('yellow');
 
-  // Broadcast sync
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    const channel = new BroadcastChannel(`whiteboard-sync-${lessonId}`);
-
-    channel.onmessage = (event) => {
-      if (event.data.type === 'SYNC_NOTES') {
-        setNotes(event.data.notes);
-      }
-    };
-
-    return () => {
-      channel.close();
-    };
-  }, [lessonId]);
+  // Sync notes with other tabs/devices
+  useEffect(
+    () =>
+      syncSubscribe<{ type: string; notes: WhiteboardNote[] }>(`whiteboard-sync-${lessonId}`, (data) => {
+        if (data.type === 'SYNC_NOTES') setNotes(data.notes);
+      }),
+    [lessonId]
+  );
 
   const broadcastNotes = (updated: WhiteboardNote[]) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(updated));
-    } catch (e) {}
+    } catch {}
 
-    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
-    try {
-      const channel = new BroadcastChannel(`whiteboard-sync-${lessonId}`);
-      channel.postMessage({ type: 'SYNC_NOTES', notes: updated });
-      channel.close();
-    } catch (e) {}
+    syncPost(`whiteboard-sync-${lessonId}`, { type: 'SYNC_NOTES', notes: updated });
   };
 
   const handleAddNote = () => {
