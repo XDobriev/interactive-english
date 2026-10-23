@@ -34,7 +34,7 @@ npm run build     # tsc -b && vite build, без ошибок
 
 ## Окружение
 - Windows 11, PowerShell. Переменные окружения задаются `$env:VAR="x"`, а не `VAR=x cmd`. Пути с кириллицей — в кавычках.
-- Dev-сервер: `npm run dev`. Relay для синхронизации между устройствами: `npm run relay` + `VITE_SYNC_URL=ws://localhost:<порт>` (порт смотри в `server/relay.mjs`).
+- Dev-сервер: `npm run dev`. Relay для синхронизации между устройствами: `npm run relay` + `VITE_SYNC_URL=ws://localhost:8787` (порт по умолчанию 8787, меняется через `PORT`).
 - Настоящего ключа Gemini в проекте нет: `GEMINI_API_KEY` кладётся только в серверное окружение (Vercel) или в локальный `.env.local` (он в `.gitignore`). Без ключа AI-функции проверяй на моках, как в `src/__tests__/gemini.test.ts`.
 - Git: окончания строк CRLF/LF дают предупреждения — это нормально, не «чини» их массовой правкой.
 
