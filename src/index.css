@@ -1017,6 +1017,20 @@ html, body {
    BREAKPOINT: <= 1440px (Standard Laptops & High-DPI Windows 125%/150% scaling)
    -------------------------------------------------------------------------- */
 @media (max-width: 1440px) {
+  /* Dashboard Action Buttons compact labels */
+  .btn-dashboard-ai .btn-label-desktop {
+    display: none !important;
+  }
+  .btn-dashboard-ai .btn-label-mobile {
+    display: inline !important;
+  }
+  .btn-dashboard-create .btn-label-desktop {
+    display: none !important;
+  }
+  .btn-dashboard-create .btn-label-mobile {
+    display: inline !important;
+  }
+
   /* Hide text labels in classroom tools, leaving sleek icon buttons */
   .classroom-tools-pill .tool-btn-text {
     display: none !important;
