@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, LogOut, RefreshCw, ChevronDown, Shield } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/authCore';
 import { sound } from '../../utils/audio';
 
 interface UserAccountMenuProps {

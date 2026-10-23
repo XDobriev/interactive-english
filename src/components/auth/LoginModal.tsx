@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, GraduationCap, UserCheck, ShieldCheck, Mail, Lock, ArrowRight, KeyRound, Sparkles } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/authCore';
 import { sound } from '../../utils/audio';
 
 interface LoginModalProps {
@@ -16,6 +16,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const [selectedStudentId, setSelectedStudentId] = useState(demoStudents[0]?.id || 'st-1');
   const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -23,20 +24,34 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     e.preventDefault();
     sound.playClick();
     setIsSubmitting(true);
-    await loginTeacher(teacherEmail, demoTeacher.name);
-    setIsSubmitting(false);
-    sound.playCorrect();
-    onClose();
+    setLoginError(null);
+    try {
+      await loginTeacher(teacherEmail, demoTeacher.name);
+      sound.playCorrect();
+      onClose();
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Не удалось войти.');
+      sound.playIncorrect();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     sound.playClick();
     setIsSubmitting(true);
-    await loginStudent(selectedStudentId, inviteCodeInput);
-    setIsSubmitting(false);
-    sound.playCorrect();
-    onClose();
+    setLoginError(null);
+    try {
+      await loginStudent(selectedStudentId, inviteCodeInput);
+      sound.playCorrect();
+      onClose();
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Не удалось войти.');
+      sound.playIncorrect();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -254,6 +269,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {loginError && (
+              <p role="alert" style={{ color: 'var(--error)', fontSize: '13px', fontWeight: 600, margin: '0 0 12px' }}>
+                {loginError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -356,6 +376,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {loginError && (
+              <p role="alert" style={{ color: 'var(--error)', fontSize: '13px', fontWeight: 600, margin: '0 0 12px' }}>
+                {loginError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={isSubmitting}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, UserPlus, Play, FileText, CheckCircle2, Clock, Mail, X } from 'lucide-react';
-import type { Student, Lesson } from '../../types';
+import type { Student, Lesson, CEFRLevel } from '../../types';
 import { sound } from '../../utils/audio';
 
 interface StudentsTabProps {
@@ -324,7 +324,7 @@ export const StudentsTab: React.FC<StudentsTabProps> = ({
                   </label>
                   <select
                     value={level}
-                    onChange={(e) => setLevel(e.target.value as any)}
+                    onChange={(e) => setLevel(e.target.value as CEFRLevel)}
                     style={modalInputStyle}
                   >
                     <option value="A1">A1 Beginner</option>

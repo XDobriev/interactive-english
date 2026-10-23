@@ -1,183 +1,90 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { User, UserRole, AuthSession, AuthPermissions, TeacherProfile, StudentProfile } from '../types/auth';
+import React, { useState } from 'react';
+import type { AuthSession, UserRole, StudentProfile } from '../types/auth';
 import { getPermissionsForRole } from '../types/auth';
-
-export const DEMO_TEACHER: TeacherProfile = {
-  id: 't-anna',
-  name: 'Анна Смирнова',
-  email: 'anna.teacher@english-studio.io',
-  role: 'teacher',
-  credentials: 'CELTA / Cambridge C2 Proficiency',
-  schoolName: 'English Studio Pro',
-  studentsCount: 4,
-  totalLessonsCreated: 5,
-  plan: 'pro',
-  createdAt: '2026-01-15T10:00:00Z',
-};
-
-export const DEMO_STUDENTS: StudentProfile[] = [
-  {
-    id: 'st-1',
-    name: 'Анна Васильева',
-    email: 'anna.v@example.com',
-    role: 'student',
-    level: 'B1',
-    teacherId: 't-anna',
-    teacherName: 'Анна Смирнова',
-    lessonBalance: 6,
-    completedLessonsCount: 8,
-    createdAt: '2026-02-01T12:00:00Z',
-    inviteCode: 'STU-B1-ANNA',
-  },
-  {
-    id: 'st-2',
-    name: 'Максим Петров',
-    email: 'maxim.p@example.com',
-    role: 'student',
-    level: 'A2',
-    teacherId: 't-anna',
-    teacherName: 'Анна Смирнова',
-    lessonBalance: 2,
-    completedLessonsCount: 3,
-    createdAt: '2026-03-10T15:30:00Z',
-    inviteCode: 'STU-A2-MAX',
-  },
-  {
-    id: 'st-3',
-    name: 'Екатерина Соколова',
-    email: 'kate.s@example.com',
-    role: 'student',
-    level: 'B2',
-    teacherId: 't-anna',
-    teacherName: 'Анна Смирнова',
-    lessonBalance: 8,
-    completedLessonsCount: 14,
-    createdAt: '2026-01-20T09:15:00Z',
-    inviteCode: 'STU-B2-KATE',
-  },
-  {
-    id: 'st-4',
-    name: 'Дмитрий Иванов',
-    email: 'dmitry.i@example.com',
-    role: 'student',
-    level: 'A1',
-    teacherId: 't-anna',
-    teacherName: 'Анна Смирнова',
-    lessonBalance: 4,
-    completedLessonsCount: 1,
-    createdAt: '2026-04-05T14:00:00Z',
-    inviteCode: 'STU-A1-DMITRY',
-  },
-];
-
-interface AuthContextType {
-  user: User | null;
-  session: AuthSession | null;
-  role: UserRole;
-  permissions: AuthPermissions;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  loginTeacher: (email?: string, name?: string) => Promise<void>;
-  loginStudent: (studentIdOrName: string, inviteCode?: string) => Promise<void>;
-  switchRole: (newRole: UserRole) => void;
-  logout: () => void;
-  activeStudent: StudentProfile | null;
-  demoTeacher: TeacherProfile;
-  demoStudents: StudentProfile[];
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { loadJson } from '../utils/storage';
+import { DEMO_TEACHER, DEMO_STUDENTS } from './demoData';
+import { AuthContext } from './authCore';
 
 const STORAGE_KEY = 'interactive_english_session_v1';
+const SESSION_TTL_MS = 86_400_000 * 7;
+const DEMO_LATENCY_MS = 200;
+
+// Demo mode: sessions are created locally and are NOT a security boundary.
+const createDemoSession = (user: AuthSession['user'], kind: 'teacher' | 'student'): AuthSession => ({
+  token: `demo-${kind}-${Date.now()}`,
+  user,
+  expiresAt: Date.now() + SESSION_TTL_MS,
+});
+
+const restoreSession = (): AuthSession => {
+  const stored = loadJson<AuthSession | null>(STORAGE_KEY, null);
+  if (stored && stored.expiresAt > Date.now()) return stored;
+  if (stored) localStorage.removeItem(STORAGE_KEY);
+  return createDemoSession(DEMO_TEACHER, 'teacher');
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(DEMO_TEACHER);
-  const [session, setSession] = useState<AuthSession | null>(() => ({
-    token: 'jwt-mock-teacher-token',
-    user: DEMO_TEACHER,
-    expiresAt: Date.now() + 86400000 * 7,
-  }));
+  const [session, setSession] = useState<AuthSession | null>(restoreSession);
   const [isLoading, setIsLoading] = useState(false);
+  const user = session?.user ?? null;
 
-  // Restore session from localStorage on mount
-  useEffect(() => {
+  const saveSession = (next: AuthSession | null) => {
+    setSession(next);
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed: AuthSession = JSON.parse(stored);
-        if (parsed.expiresAt > Date.now()) {
-          setSession(parsed);
-          setUser(parsed.user);
-        } else {
-          localStorage.removeItem(STORAGE_KEY);
-        }
+      if (next) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
       }
-    } catch {
-      // Fallback to DEMO_TEACHER
-    }
-  }, []);
-
-  const saveSession = (sess: AuthSession | null) => {
-    setSession(sess);
-    setUser(sess ? sess.user : null);
-    if (sess) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sess));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.warn('Failed to persist session:', err);
     }
   };
+
+  const simulateLatency = () => new Promise((resolve) => setTimeout(resolve, DEMO_LATENCY_MS));
 
   const loginTeacher = async (email?: string, name?: string) => {
     setIsLoading(true);
-    // Simulate brief network latency for realistic feel
-    await new Promise((r) => setTimeout(r, 200));
-    const teacherUser: TeacherProfile = {
-      ...DEMO_TEACHER,
-      email: email || DEMO_TEACHER.email,
-      name: name || DEMO_TEACHER.name,
-    };
-    const newSession: AuthSession = {
-      token: `jwt-mock-t-${Date.now()}`,
-      user: teacherUser,
-      expiresAt: Date.now() + 86400000 * 7,
-    };
-    saveSession(newSession);
-    setIsLoading(false);
-  };
-
-  const loginStudent = async (studentIdOrName: string, _inviteCode?: string) => {
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 200));
-
-    // Find student by ID or name
-    const found =
-      DEMO_STUDENTS.find((s) => s.id === studentIdOrName || s.name.toLowerCase().includes(studentIdOrName.toLowerCase())) ||
-      DEMO_STUDENTS[0];
-
-    const newSession: AuthSession = {
-      token: `jwt-mock-s-${Date.now()}`,
-      user: found,
-      expiresAt: Date.now() + 86400000 * 7,
-    };
-    saveSession(newSession);
-    setIsLoading(false);
-  };
-
-  const switchRole = (newRole: UserRole) => {
-    if (newRole === 'teacher') {
-      loginTeacher();
-    } else {
-      loginStudent(DEMO_STUDENTS[0].id);
+    try {
+      await simulateLatency();
+      saveSession(
+        createDemoSession(
+          { ...DEMO_TEACHER, email: email || DEMO_TEACHER.email, name: name || DEMO_TEACHER.name },
+          'teacher'
+        )
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    saveSession(null);
+  const loginStudent = async (studentIdOrName: string, inviteCode?: string) => {
+    setIsLoading(true);
+    try {
+      await simulateLatency();
+      const query = studentIdOrName.trim().toLowerCase();
+      const found = DEMO_STUDENTS.find((s) => s.id === studentIdOrName || s.name.toLowerCase().includes(query));
+      if (!found) {
+        throw new Error('Ученик не найден.');
+      }
+      const code = inviteCode?.trim();
+      if (code && found.inviteCode?.toLowerCase() !== code.toLowerCase()) {
+        throw new Error('Неверный код приглашения.');
+      }
+      saveSession(createDemoSession(found, 'student'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const currentRole: UserRole = user ? user.role : 'teacher';
-  const permissions = getPermissionsForRole(currentRole);
+  const switchRole = (newRole: UserRole) => {
+    const login = newRole === 'teacher' ? loginTeacher() : loginStudent(DEMO_STUDENTS[0].id);
+    login.catch((err) => console.warn('Role switch failed:', err));
+  };
 
+  const logout = () => saveSession(null);
+
+  const currentRole: UserRole = user ? user.role : 'teacher';
   const activeStudent: StudentProfile | null =
     user?.role === 'student' ? (user as StudentProfile) : DEMO_STUDENTS[0];
 
@@ -187,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         session,
         role: currentRole,
-        permissions,
+        permissions: getPermissionsForRole(currentRole),
         isAuthenticated: !!user,
         isLoading,
         loginTeacher,
@@ -202,12 +109,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
