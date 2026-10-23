@@ -1,37 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Volume2, ArrowLeft, ArrowRight, Shuffle, Check, HelpCircle } from 'lucide-react';
-import type { FlashcardsData } from '../../types';
+import type { FlashcardItem, FlashcardsData } from '../../types';
 import { speakEnglish } from '../../utils/speech';
 import { sound } from '../../utils/audio';
+import { normalizeFlashcards } from '../../utils/exerciseNormalize';
 
 interface FlashcardsProps {
   data: FlashcardsData;
 }
 
 export const FlashcardsExercise: React.FC<FlashcardsProps> = ({ data }) => {
-  const rawCards = Array.isArray(data?.cards)
-    ? data.cards
-    : Array.isArray(data)
-    ? data
-    : [];
-  const normalizedCards = rawCards.map((c: any, i: number) => ({
-    id: c.id || `card-${i}`,
-    term: c.term ?? c.word ?? '',
-    transcription: c.transcription ?? '//',
-    translation: c.translation ?? '',
-    definitionEn: c.definitionEn || '',
-    exampleSentence: c.exampleSentence ?? c.example ?? '',
-  }));
+  const normalizedCards = useMemo(() => normalizeFlashcards(data), [data]);
+  // Remount (resetting deck order and progress) when the cards change
+  return <FlashcardsDeck key={JSON.stringify(normalizedCards)} initialCards={normalizedCards} />;
+};
 
-  const [cards, setCards] = useState(normalizedCards);
+const FlashcardsDeck: React.FC<{ initialCards: FlashcardItem[] }> = ({ initialCards }) => {
+  const [cards, setCards] = useState(initialCards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [mastered, setMastered] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    setCards(normalizedCards);
-    setCurrentIndex(0);
-  }, [normalizedCards.length]);
 
   if (cards.length === 0) {
     return (

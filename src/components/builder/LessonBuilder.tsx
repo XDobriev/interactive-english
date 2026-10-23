@@ -26,7 +26,7 @@ export const LessonBuilder: React.FC<LessonBuilderProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [lesson, setLesson] = useState<Lesson>(
+  const [lesson, setLesson] = useState<Lesson>(() =>
     initialLesson || {
       id: `custom-lesson-${Date.now()}`,
       title: 'Новый урок английского',
@@ -161,7 +161,7 @@ export const LessonBuilder: React.FC<LessonBuilderProps> = ({
           setLesson(parsed);
           setActiveSectionId(parsed.sections[0]?.id || '');
           sound.playCorrect();
-        } catch (err) {
+        } catch {
           alert('Ошибка чтения JSON файла.');
         }
       };

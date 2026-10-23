@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckCircle2, RotateCcw } from 'lucide-react';
 import type { FillBlanksData } from '../../types';
 import { sound } from '../../utils/audio';
+import { normalizeFillBlanks, type NormalizedBlankItem } from '../../utils/exerciseNormalize';
 
 interface FillInBlanksProps {
   data: FillBlanksData;
@@ -16,50 +17,39 @@ export const FillInBlanksExercise: React.FC<FillInBlanksProps> = ({
   onAnswerChange,
   showAnswers = false,
 }) => {
-  const [answers, setAnswers] = useState<Record<string, string>>(() => userAnswers || {});
-  const [checked, setChecked] = useState(false);
-  const [scores, setScores] = useState<Record<string, boolean>>({});
+  const items = useMemo(() => normalizeFillBlanks(data), [data]);
+  // Remount (resetting answers) when the sentences or the reveal flag change
+  return (
+    <FillInBlanksBody
+      key={`${showAnswers}:${JSON.stringify(items)}`}
+      items={items}
+      initialAnswers={userAnswers}
+      onAnswerChange={onAnswerChange}
+      showAnswers={showAnswers}
+    />
+  );
+};
 
-  // Normalize items defensively against LLM schema variations
-  const rawItems = Array.isArray(data?.items)
-    ? data.items
-    : Array.isArray((data as any)?.sentences)
-    ? (data as any).sentences
-    : Array.isArray((data as any)?.blanks)
-    ? (data as any).blanks
-    : Array.isArray(data)
-    ? data
-    : [];
+interface FillInBlanksBodyProps {
+  items: NormalizedBlankItem[];
+  initialAnswers?: Record<string, string>;
+  onAnswerChange?: (answers: Record<string, string>) => void;
+  showAnswers: boolean;
+}
 
-  interface NormalizedBlankItem {
-    id: string;
-    prefixText: string;
-    correctAnswer: string;
-    hint?: string;
-    suffixText: string;
-  }
-
-  const items: NormalizedBlankItem[] = rawItems.map((item: any, idx: number) => ({
-    id: String(item.id || `fib-${idx}`),
-    prefixText: String(item.prefixText ?? item.textBefore ?? (item.sentence ? item.sentence.split(/\[.*?\]/)[0] : '') ?? ''),
-    correctAnswer: String(item.correctAnswer ?? item.answer ?? item.word ?? (item.sentence ? (item.sentence.match(/\[(.*?)\]/)?.[1] || '') : '') ?? ''),
-    hint: item.hint ? String(item.hint) : undefined,
-    suffixText: String(item.suffixText ?? item.textAfter ?? (item.sentence ? item.sentence.split(/\[.*?\]/)[1] : '') ?? ''),
-  }));
-
-  useEffect(() => {
-    if (showAnswers) {
-      const revealed: Record<string, string> = {};
-      const correctMap: Record<string, boolean> = {};
-      items.forEach((item) => {
-        revealed[item.id] = item.correctAnswer;
-        correctMap[item.id] = true;
-      });
-      setAnswers(revealed);
-      setScores(correctMap);
-      setChecked(true);
-    }
-  }, [showAnswers, items.length]);
+const FillInBlanksBody: React.FC<FillInBlanksBodyProps> = ({
+  items,
+  initialAnswers,
+  onAnswerChange,
+  showAnswers,
+}) => {
+  const [answers, setAnswers] = useState<Record<string, string>>(() =>
+    showAnswers ? Object.fromEntries(items.map((item) => [item.id, item.correctAnswer])) : (initialAnswers ?? {})
+  );
+  const [checked, setChecked] = useState(showAnswers);
+  const [scores, setScores] = useState<Record<string, boolean>>(() =>
+    showAnswers ? Object.fromEntries(items.map((item) => [item.id, true])) : {}
+  );
 
   const handleInputChange = (id: string, value: string) => {
     const updated = { ...answers, [id]: value };

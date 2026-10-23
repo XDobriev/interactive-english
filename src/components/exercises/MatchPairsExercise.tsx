@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckCircle2, RotateCcw } from 'lucide-react';
 import type { MatchPairsData, MatchPairItem } from '../../types';
 import { sound } from '../../utils/audio';
+import { normalizeMatchPairs } from '../../utils/exerciseNormalize';
+import { seededShuffle } from '../../utils/exerciseData';
 
 interface MatchPairsProps {
   data: MatchPairsData;
@@ -12,38 +14,20 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
   data,
   showAnswers = false,
 }) => {
+  const pairs = useMemo(() => normalizeMatchPairs(data), [data]);
+  // Remount (resetting progress) when the pairs or the reveal flag change
+  return <MatchPairsBoard key={`${showAnswers}:${JSON.stringify(pairs)}`} pairs={pairs} showAnswers={showAnswers} />;
+};
+
+const MatchPairsBoard: React.FC<{ pairs: MatchPairItem[]; showAnswers: boolean }> = ({ pairs, showAnswers }) => {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
-  const [matchedPairs, setMatchedPairs] = useState<Set<string>>(new Set());
-  const [shuffledRight, setShuffledRight] = useState<MatchPairItem[]>([]);
+  const [matchedPairs, setMatchedPairs] = useState<Set<string>>(
+    () => new Set(showAnswers ? pairs.map((p) => p.id) : [])
+  );
+  const [shuffledRight, setShuffledRight] = useState<MatchPairItem[]>(() =>
+    seededShuffle(pairs, JSON.stringify(pairs))
+  );
   const [errorPair, setErrorPair] = useState<{ left: string; right: string } | null>(null);
-
-  // Normalize pairs defensively against LLM variations
-  const rawPairs = Array.isArray(data?.pairs)
-    ? data.pairs
-    : Array.isArray(data)
-    ? data
-    : [];
-  const pairs: MatchPairItem[] = rawPairs.map((p: any, idx: number) => ({
-    id: p.id || `pair-${idx}`,
-    leftText: p.leftText ?? p.left ?? p.term ?? p.english ?? '',
-    rightText: p.rightText ?? p.right ?? p.definition ?? p.translation ?? p.russian ?? '',
-  }));
-
-  useEffect(() => {
-    // Shuffle right items on load
-    const rightList = [...pairs].sort(() => Math.random() - 0.5);
-    setShuffledRight(rightList);
-    setMatchedPairs(new Set());
-    setSelectedLeft(null);
-  }, [pairs.length]);
-
-  useEffect(() => {
-    if (showAnswers) {
-      const allMatched = new Set(pairs.map((p) => p.id));
-      setMatchedPairs(allMatched);
-      setSelectedLeft(null);
-    }
-  }, [showAnswers, pairs.length]);
 
   const handleLeftClick = (id: string) => {
     if (matchedPairs.has(id)) return;
@@ -225,7 +209,7 @@ export const MatchPairsExercise: React.FC<MatchPairsProps> = ({
             </span>
           ) : (
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              Соединено: {matchedPairs.size} из {data.pairs.length}
+              Соединено: {matchedPairs.size} из {pairs.length}
             </span>
           )}
         </div>

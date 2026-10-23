@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
-import type { QuizData } from '../../types';
+import type { QuizData, QuizQuestion } from '../../types';
 import { sound } from '../../utils/audio';
+import { normalizeQuiz } from '../../utils/exerciseNormalize';
 
 interface QuizProps {
   data: QuizData;
@@ -9,36 +10,23 @@ interface QuizProps {
 }
 
 export const QuizExercise: React.FC<QuizProps> = ({ data, showAnswers = false }) => {
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>({});
-  const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
+  const questions = useMemo(() => normalizeQuiz(data), [data]);
+  // Remount (resetting answers) whenever the questions or the reveal flag change
+  return <QuizBody key={`${showAnswers}:${JSON.stringify(questions)}`} questions={questions} showAnswers={showAnswers} />;
+};
 
-  const rawQuestions = Array.isArray(data?.questions)
-    ? data.questions
-    : (data as any)?.question
-    ? [data]
-    : Array.isArray(data)
-    ? data
-    : [];
-  const questions = rawQuestions.map((q: any, i: number) => ({
-    id: q.id || `q-${i}`,
-    question: q.question || '',
-    options: Array.isArray(q.options) ? q.options : ['Option A', 'Option B'],
-    correctOptionIndex: typeof q.correctOptionIndex === 'number' ? q.correctOptionIndex : 0,
-    explanation: q.explanation || undefined,
-  }));
+interface QuizBodyProps {
+  questions: QuizQuestion[];
+  showAnswers: boolean;
+}
 
-  useEffect(() => {
-    if (showAnswers) {
-      const revealed: Record<string, number> = {};
-      const status: Record<string, boolean> = {};
-      questions.forEach((q) => {
-        revealed[q.id] = q.correctOptionIndex;
-        status[q.id] = true;
-      });
-      setSelectedOptions(revealed);
-      setSubmitted(status);
-    }
-  }, [showAnswers, questions.length]);
+const QuizBody: React.FC<QuizBodyProps> = ({ questions, showAnswers }) => {
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, number>>(() =>
+    showAnswers ? Object.fromEntries(questions.map((q) => [q.id, q.correctOptionIndex])) : {}
+  );
+  const [submitted, setSubmitted] = useState<Record<string, boolean>>(() =>
+    showAnswers ? Object.fromEntries(questions.map((q) => [q.id, true])) : {}
+  );
 
   const handleSelect = (questionId: string, optionIndex: number, correctIndex: number) => {
     sound.playClick();
@@ -92,7 +80,7 @@ export const QuizExercise: React.FC<QuizProps> = ({ data, showAnswers = false })
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {q.options.map((option: string, optIdx: number) => {
+              {q.options.map((option, optIdx) => {
                 const isThisSelected = selectedIndex === optIdx;
                 const isThisTargetCorrect = optIdx === q.correctOptionIndex;
 

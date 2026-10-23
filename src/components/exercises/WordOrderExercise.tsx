@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { CheckCircle2, RotateCcw } from 'lucide-react';
-import type { WordOrderData } from '../../types';
+import type { WordOrderData, WordOrderItem } from '../../types';
 import { sound } from '../../utils/audio';
+import { normalizeWordOrder } from '../../utils/exerciseNormalize';
 
 interface WordOrderProps {
   data: WordOrderData;
@@ -12,58 +13,19 @@ export const WordOrderExercise: React.FC<WordOrderProps> = ({
   data,
   showAnswers = false,
 }) => {
-  // Normalize items defensively
-  const rawItems = Array.isArray(data?.items)
-    ? data.items
-    : (data as any)?.targetSentence
-    ? [data]
-    : Array.isArray(data)
-    ? data
-    : [];
+  const items = useMemo(() => normalizeWordOrder(data), [data]);
+  // Remount (resetting placed words) when the sentences or the reveal flag change
+  return <WordOrderBoard key={`${showAnswers}:${JSON.stringify(items)}`} items={items} showAnswers={showAnswers} />;
+};
 
-  const items = rawItems.map((it: any, idx: number) => {
-    const targetSentence = it.targetSentence ?? it.sentence ?? '';
-    const words = targetSentence.trim().split(/\s+/).filter(Boolean);
-    const shuffledWords = Array.isArray(it.shuffledWords) && it.shuffledWords.length > 0
-      ? it.shuffledWords
-      : [...words].sort(() => Math.random() - 0.5);
-    return {
-      id: it.id || `wo-${idx}`,
-      targetSentence,
-      shuffledWords,
-      hint: it.hint || undefined,
-      distractors: it.distractors || undefined,
-    };
-  });
-
-  // State for each sentence item: placed word indices
-  const [placedWords, setPlacedWords] = useState<Record<string, string[]>>({});
-  const [checkedStatus, setCheckedStatus] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    // Initialize empty placed words
-    const initPlaced: Record<string, string[]> = {};
-    items.forEach((item) => {
-      initPlaced[item.id] = [];
-    });
-    setPlacedWords(initPlaced);
-    setCheckedStatus({});
-  }, [items.length]);
-
-  useEffect(() => {
-    if (showAnswers) {
-      const revealed: Record<string, string[]> = {};
-      const status: Record<string, boolean> = {};
-      items.forEach((item) => {
-        // Split target sentence into words
-        const targetWords = item.targetSentence.split(/\s+/);
-        revealed[item.id] = targetWords;
-        status[item.id] = true;
-      });
-      setPlacedWords(revealed);
-      setCheckedStatus(status);
-    }
-  }, [showAnswers, items.length]);
+const WordOrderBoard: React.FC<{ items: WordOrderItem[]; showAnswers: boolean }> = ({ items, showAnswers }) => {
+  // State for each sentence item: placed words and check result
+  const [placedWords, setPlacedWords] = useState<Record<string, string[]>>(() =>
+    showAnswers ? Object.fromEntries(items.map((item) => [item.id, item.targetSentence.split(/\s+/)])) : {}
+  );
+  const [checkedStatus, setCheckedStatus] = useState<Record<string, boolean>>(() =>
+    showAnswers ? Object.fromEntries(items.map((item) => [item.id, true])) : {}
+  );
 
   const handleWordClick = (itemId: string, word: string, fromPlaced: boolean) => {
     sound.playClick();
