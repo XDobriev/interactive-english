@@ -1014,9 +1014,9 @@ html, body {
 }
 
 /* --------------------------------------------------------------------------
-   BREAKPOINT: <= 1440px (Standard Laptops & High-DPI Windows 125%/150% scaling)
+   BREAKPOINT: <= 1520px (Standard Laptops & High-DPI Windows 125%/150% scaling)
    -------------------------------------------------------------------------- */
-@media (max-width: 1440px) {
+@media (max-width: 1520px) {
   /* Dashboard Action Buttons compact labels */
   .btn-dashboard-ai .btn-label-desktop {
     display: none !important;
