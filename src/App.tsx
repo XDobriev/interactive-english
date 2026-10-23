@@ -5,8 +5,10 @@ import type { Lesson, UserRole, Student, ScheduleEvent, HomeworkSubmission } fro
 import { TeacherDashboard } from './components/dashboard/TeacherDashboard';
 import { ClassroomRunner } from './components/classroom/ClassroomRunner';
 import { LessonBuilder } from './components/builder/LessonBuilder';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/authCore';
 import { sound } from './utils/audio';
+import { loadJson, saveJson } from './utils/storage';
 
 type AppView = 'dashboard' | 'classroom' | 'builder';
 
@@ -18,112 +20,44 @@ const STORAGE_HOMEWORK = 'interactive_english_homework_v2';
 const AppContent: React.FC = () => {
   const { role, user, permissions } = useAuth();
 
-  const [lessons, setLessons] = useState<Lesson[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_LESSONS);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          console.error('Failed to parse saved lessons:', e);
-        }
-      }
-    }
-    return initialCurriculum;
+  const [lessons, setLessons] = useState<Lesson[]>(() => loadJson(STORAGE_LESSONS, initialCurriculum));
+  const [students, setStudents] = useState<Student[]>(() => loadJson(STORAGE_STUDENTS, initialStudents));
+  const [scheduleEvents, setScheduleEvents] = useState<ScheduleEvent[]>(() =>
+    loadJson(STORAGE_SCHEDULE, initialScheduleEvents)
+  );
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(() =>
+    loadJson(STORAGE_HOMEWORK, initialHomeworkSubmissions)
+  );
+
+  // Direct student links open the classroom immediately: ?lesson=unit-b1-travel&role=student
+  const [launch] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const lessonId = params.get('lesson');
+    const lesson = lessonId ? lessons.find((l) => l.id === lessonId) : undefined;
+    return lesson ? { lesson, role: params.get('role') === 'student' ? ('student' as const) : role } : null;
   });
 
-  const [students, setStudents] = useState<Student[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_STUDENTS);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {}
-      }
-    }
-    return initialStudents;
-  });
-
-  const [scheduleEvents, setScheduleEvents] = useState<ScheduleEvent[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_SCHEDULE);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {}
-      }
-    }
-    return initialScheduleEvents;
-  });
-
-  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_HOMEWORK);
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {}
-      }
-    }
-    return initialHomeworkSubmissions;
-  });
-
-  const [currentView, setCurrentView] = useState<AppView>('dashboard');
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
-  const [activeRole, setActiveRole] = useState<UserRole>(role);
+  const [currentView, setCurrentView] = useState<AppView>(launch ? 'classroom' : 'dashboard');
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(launch?.lesson ?? null);
+  const [activeRole, setActiveRole] = useState<UserRole>(launch?.role ?? role);
   const [activeStudentName, setActiveStudentName] = useState<string>('Анна');
   const [editingLesson, setEditingLesson] = useState<Lesson | undefined>(undefined);
 
-  // Sync active role with auth role
-  useEffect(() => {
+  // Follow auth changes (login/logout/role switch) without an effect: adjust state while rendering
+  const [syncedUser, setSyncedUser] = useState(user);
+  if (syncedUser !== user) {
+    setSyncedUser(user);
     setActiveRole(role);
     if (user?.role === 'student') {
       setActiveStudentName(user.name);
     }
-  }, [role, user]);
+  }
 
-  // Check URL query parameters for direct student links: ?lesson=unit-b1-travel&role=student
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const lessonParam = params.get('lesson');
-    const roleParam = params.get('role');
-
-    if (lessonParam) {
-      const found = lessons.find((l) => l.id === lessonParam);
-      if (found) {
-        setActiveLesson(found);
-        const resolvedRole = roleParam === 'student' ? 'student' : role;
-        setActiveRole(resolvedRole);
-        setCurrentView('classroom');
-      }
-    }
-  }, [lessons, role]);
-
-  // Sync to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_LESSONS, JSON.stringify(lessons));
-    } catch (e) {}
-  }, [lessons]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
-    } catch (e) {}
-  }, [students]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_SCHEDULE, JSON.stringify(scheduleEvents));
-    } catch (e) {}
-  }, [scheduleEvents]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_HOMEWORK, JSON.stringify(homeworkSubmissions));
-    } catch (e) {}
-  }, [homeworkSubmissions]);
+  // Persist data to local storage
+  useEffect(() => saveJson(STORAGE_LESSONS, lessons), [lessons]);
+  useEffect(() => saveJson(STORAGE_STUDENTS, students), [students]);
+  useEffect(() => saveJson(STORAGE_SCHEDULE, scheduleEvents), [scheduleEvents]);
+  useEffect(() => saveJson(STORAGE_HOMEWORK, homeworkSubmissions), [homeworkSubmissions]);
 
   const handleStartLesson = (lesson: Lesson, targetRole: UserRole, studentName?: string) => {
     sound.playClick();

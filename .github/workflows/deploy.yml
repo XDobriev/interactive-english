@@ -35,6 +35,11 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          # URL of the Vercel deployment that hosts /api/gemini (repository variable)
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          # wss:// URL of the deployed sync relay (optional, repository variable)
+          VITE_SYNC_URL: ${{ vars.VITE_SYNC_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
