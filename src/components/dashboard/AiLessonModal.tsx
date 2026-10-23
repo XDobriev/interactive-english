@@ -33,11 +33,11 @@ export const AiLessonModal: React.FC<AiLessonModalProps> = ({
       onLessonGenerated(newLesson);
       onClose();
       setTopic('');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to generate full lesson with Gemini:', err);
       sound.playIncorrect();
       setError(
-        err?.message ||
+        (err instanceof Error ? err.message : '') ||
           'Не удалось сгенерировать урок. Проверьте подключение или укажите собственный Gemini API ключ в настройках.'
       );
     } finally {

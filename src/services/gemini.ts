@@ -1,106 +1,83 @@
-import type {
-  ExerciseType,
-  CEFRLevel,
-  Lesson,
-} from '../types';
+import type { ExerciseType, CEFRLevel, Lesson, LessonSection } from '../types';
+import {
+  aiLessonSchema,
+  parseAiExercise,
+  parseAiLessonExercise,
+  type AiExercise,
+} from './aiSchemas';
+import { aiExerciseToExercise } from '../utils/exerciseData';
 
-export const getGeminiApiKey = (): string => {
-  if (typeof window !== 'undefined') {
-    const customKey = localStorage.getItem('gemini_api_key');
-    if (customKey && customKey.trim().length > 0) return customKey.trim();
-  }
-  return import.meta.env.VITE_GEMINI_API_KEY || '';
-};
-
-export const setGeminiApiKey = (key: string): void => {
-  if (typeof window !== 'undefined') {
-    if (key && key.trim().length > 0) {
-      localStorage.setItem('gemini_api_key', key.trim());
-    } else {
-      localStorage.removeItem('gemini_api_key');
-    }
-  }
-};
+/** Base URL of the backend that hosts `/api/gemini` (empty = same origin). */
+const API_BASE: string = import.meta.env.VITE_API_BASE ?? '';
+const REQUEST_TIMEOUT_MS = 30_000;
+export const MAX_PROMPT_LENGTH = 8000;
 
 /**
- * Call Google Gemini REST API using gemini-3.5-flash-lite (fast, smart, robust for ESL curriculum)
+ * Call the Gemini proxy. The API key lives only on the server (see api/gemini.ts),
+ * so it is never shipped to the browser.
  */
-async function callGemini(prompt: string, systemInstruction?: string): Promise<string> {
-  const apiKey = getGeminiApiKey();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
-
-  const payload: any = {
-    contents: [
-      {
-        parts: [{ text: prompt }],
-      },
-    ],
-  };
-
-  if (systemInstruction) {
-    payload.systemInstruction = {
-      parts: [{ text: systemInstruction }],
-    };
+export async function callGemini(prompt: string, systemInstruction?: string): Promise<string> {
+  if (prompt.length > MAX_PROMPT_LENGTH) {
+    throw new Error(`Запрос слишком длинный (максимум ${MAX_PROMPT_LENGTH} символов).`);
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}/api/gemini`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, systemInstruction }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new Error('Gemini не ответил вовремя. Попробуйте ещё раз.');
+    }
+    throw new Error('Не удалось связаться с сервером Gemini. Проверьте подключение.');
+  }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message = errorData?.error?.message || `Gemini API error: HTTP ${response.status}`;
-    throw new Error(message);
+    const errorData: { error?: string } = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Gemini API error: HTTP ${response.status}`);
   }
 
-  const data = await response.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
+  const data: { text?: string } = await response.json();
+  if (!data.text) {
     throw new Error('Gemini API returned empty response.');
   }
-
-  return rawText;
+  return data.text;
 }
 
-/**
- * Safely parse JSON from model output (strips markdown code fences if present)
- */
-function extractJson<T>(raw: string): T {
+/** Parse JSON from model output, stripping markdown code fences if present. */
+export function extractJson(raw: string): unknown {
   let cleaned = raw.trim();
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   }
-  return JSON.parse(cleaned) as T;
+  return JSON.parse(cleaned);
 }
 
-/**
- * AI Exercise Generator: generates structured exercise content tailored for ESL English lessons
- */
-export async function generateExerciseWithGemini(
-  type: ExerciseType,
-  topic: string,
-  level: CEFRLevel = 'B1'
-): Promise<{
-  title: string;
-  instruction: string;
-  scoreWeight: number;
-  teacherNote: string;
-  data: any;
-}> {
-  const systemPrompt = `You are an expert Cambridge/Oxford-certified ESL teacher creating interactive exercises for English learners.
-Target CEFR Level: ${level}.
-Return ONLY valid, pure JSON without any markdown formatting, following the requested schema precisely.`;
+/** Run a model call + validation, retrying once if the output is malformed. */
+async function generateValidated<T>(
+  prompt: string,
+  systemInstruction: string,
+  parse: (raw: unknown) => T
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await callGemini(prompt, systemInstruction);
+    try {
+      return parse(extractJson(raw));
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  console.warn('Gemini returned invalid output twice:', lastError);
+  throw new Error('Gemini вернул ответ в неверном формате. Попробуйте изменить тему или повторить запрос.');
+}
 
-  let userPrompt = '';
-
-  if (type === 'fill_blanks') {
-    userPrompt = `Topic: "${topic}".
+const EXERCISE_PROMPTS: Record<ExerciseType, (topic: string) => string> = {
+  fill_blanks: (topic) => `Topic: "${topic}".
 Create an interactive fill-in-the-blanks exercise (3 to 4 sentences).
 Return a JSON object with this exact shape:
 {
@@ -118,9 +95,8 @@ Return a JSON object with this exact shape:
       }
     ]
   }
-}`;
-  } else if (type === 'match_pairs') {
-    userPrompt = `Topic: "${topic}".
+}`,
+  match_pairs: (topic) => `Topic: "${topic}".
 Create a match pairs vocabulary or collocation exercise (4 to 5 pairs).
 Return a JSON object with this exact shape:
 {
@@ -136,9 +112,8 @@ Return a JSON object with this exact shape:
       }
     ]
   }
-}`;
-  } else if (type === 'word_order') {
-    userPrompt = `Topic: "${topic}".
+}`,
+  word_order: (topic) => `Topic: "${topic}".
 Create a sentence unscramble / word order exercise.
 Return a JSON object with this exact shape:
 {
@@ -151,9 +126,8 @@ Return a JSON object with this exact shape:
     "hint": "Hint starting word, e.g. 'Start with Could you'",
     "distractors": "two extra distractor words separated by comma, e.g. 'did, was'"
   }
-}`;
-  } else if (type === 'flashcards') {
-    userPrompt = `Topic: "${topic}".
+}`,
+  flashcards: (topic) => `Topic: "${topic}".
 Create 3 to 4 high-yield ESL flashcards.
 Return a JSON object with this exact shape:
 {
@@ -171,9 +145,8 @@ Return a JSON object with this exact shape:
       }
     ]
   }
-}`;
-  } else if (type === 'quiz') {
-    userPrompt = `Topic: "${topic}".
+}`,
+  quiz: (topic) => `Topic: "${topic}".
 Create a multiple choice grammar or vocabulary question.
 Return a JSON object with this exact shape:
 {
@@ -187,10 +160,8 @@ Return a JSON object with this exact shape:
     "correctOptionIndex": 0,
     "explanation": "Clear grammatical explanation of why this answer is correct."
   }
-}`;
-  } else {
-    // media_rule
-    userPrompt = `Topic: "${topic}".
+}`,
+  media_rule: (topic) => `Topic: "${topic}".
 Create an ESL grammar rule explanation with speaking discussion prompts.
 Return a JSON object with this exact shape:
 {
@@ -207,23 +178,30 @@ Return a JSON object with this exact shape:
       "Open-ended question 3 for speaking practice"
     ]
   }
-}`;
-  }
+}`,
+};
 
-  const rawResponse = await callGemini(userPrompt, systemPrompt);
-  return extractJson(rawResponse);
+/** AI Exercise Generator: returns a schema-validated exercise for the given type. */
+export async function generateExerciseWithGemini(
+  type: ExerciseType,
+  topic: string,
+  level: CEFRLevel = 'B1'
+): Promise<AiExercise> {
+  const systemPrompt = `You are an expert Cambridge/Oxford-certified ESL teacher creating interactive exercises for English learners.
+Target CEFR Level: ${level}.
+Return ONLY valid, pure JSON without any markdown formatting, following the requested schema precisely.`;
+
+  return generateValidated(EXERCISE_PROMPTS[type](topic), systemPrompt, (raw) => parseAiExercise(type, raw));
 }
 
-/**
- * AI Full Lesson Generator: generates a complete 4-section lesson ready to conduct
- */
+/** AI Full Lesson Generator: generates a complete multi-section lesson ready to conduct. */
 export async function generateFullLessonWithGemini(
   topic: string,
   level: CEFRLevel = 'B1'
 ): Promise<Lesson> {
   const systemPrompt = `You are a curriculum director at a top-tier English language school.
 Design a complete, rich, communicative English lesson for CEFR level ${level}.
-Return ONLY valid JSON matching the exact Lesson interface specification. No markdown wrappers.`;
+Return ONLY valid JSON matching the requested format. No markdown wrappers.`;
 
   const userPrompt = `Create a complete interactive lesson on topic: "${topic}" for level ${level}.
 Requirements:
@@ -238,72 +216,70 @@ Requirements:
 JSON format:
 {
   "title": "...",
-  "topic": "${topic}",
-  "level": "${level}",
   "description": "...",
   "vocabulary": [
-    {
-      "id": "v1",
-      "term": "...",
-      "transcription": "/.../",
-      "translation": "...",
-      "partOfSpeech": "noun",
-      "contextSentence": "..."
-    }
+    { "term": "...", "transcription": "/.../", "translation": "...", "partOfSpeech": "noun", "contextSentence": "..." }
   ],
   "sections": [
     {
-      "id": "s1",
-      "sectionNumber": 1,
       "title": "...",
       "subtitle": "...",
       "exercises": [
         {
-          "id": "e1",
-          "type": "media_rule",
+          "type": "media_rule | match_pairs | fill_blanks | quiz | word_order",
           "title": "...",
           "instruction": "...",
           "scoreWeight": 3,
-          "teacherNote": "...",
-          "data": {
-            "ruleTitle": "...",
-            "markdownContent": "...",
-            "discussionPrompts": ["...", "..."]
-          }
+          "teacherNote": "... (in Russian)",
+          "data": "exactly the 'data' object of that exercise type:
+            media_rule: { ruleTitle, ruleContent, discussionPrompts: [..] }
+            match_pairs: { pairs: [{ leftText, rightText }] }
+            fill_blanks: { items: [{ prefixText, correctAnswer, hint, suffixText }] }
+            quiz: { question, options: [..], correctOptionIndex, explanation }
+            word_order: { targetSentence, hint, distractors }"
         }
       ]
     }
   ]
 }`;
 
-  const raw = await callGemini(userPrompt, systemPrompt);
-  const parsed = extractJson<any>(raw);
+  const parsed = await generateValidated(userPrompt, systemPrompt, (raw) => {
+    const lesson = aiLessonSchema.parse(raw);
+    const sections = lesson.sections
+      .map((s) => ({
+        ...s,
+        exercises: s.exercises.map(parseAiLessonExercise).filter((e): e is AiExercise => e !== null),
+      }))
+      .filter((s) => s.exercises.length > 0);
+    if (sections.length === 0) throw new Error('No valid exercises in AI lesson');
+    return { ...lesson, sections };
+  });
+
+  const stamp = Date.now();
+  const now = new Date().toISOString();
+  const sections: LessonSection[] = parsed.sections.map((s, idx) => ({
+    id: `s-${stamp}-${idx}`,
+    sectionNumber: idx + 1,
+    title: s.title,
+    subtitle: s.subtitle,
+    exercises: s.exercises.map((ex, exIdx) => aiExerciseToExercise(ex, `ex-${stamp}-${idx}-${exIdx}`)),
+  }));
 
   return {
-    id: `ai-lesson-${Date.now()}`,
+    id: `ai-lesson-${stamp}`,
     title: parsed.title || topic,
     unitNumber: Math.floor(Math.random() * 10) + 1,
-    level: level,
-    topic: topic,
+    level,
+    topic,
     description: parsed.description || `Interactive ESL lesson on ${topic}`,
-    vocabulary: parsed.vocabulary || [],
-    sections: (parsed.sections || []).map((s: any, idx: number) => ({
-      ...s,
-      id: s.id || `s-${Date.now()}-${idx}`,
-      sectionNumber: idx + 1,
-      exercises: (s.exercises || []).map((ex: any, exIdx: number) => ({
-        ...ex,
-        id: ex.id || `ex-${Date.now()}-${idx}-${exIdx}`,
-      })),
-    })),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    vocabulary: parsed.vocabulary.map((v, i) => ({ ...v, id: v.id || `v-${stamp}-${i}` })),
+    sections,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
-/**
- * AI Teacher In-Class Assistant: answers questions, suggests speaking questions, or explains rules
- */
+/** AI Teacher In-Class Assistant: answers questions, suggests speaking questions, or explains rules. */
 export async function askAITeacherAssistant(
   question: string,
   context?: { lessonTitle?: string; currentTopic?: string; level?: string }

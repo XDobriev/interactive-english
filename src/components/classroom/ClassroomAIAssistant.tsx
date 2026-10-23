@@ -25,7 +25,7 @@ export const ClassroomAIAssistant: React.FC<ClassroomAIAssistantProps> = ({
   topic,
   level,
 }) => {
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
       id: 'm-welcome',
       sender: 'ai',
@@ -71,11 +71,11 @@ export const ClassroomAIAssistant: React.FC<ClassroomAIAssistantProps> = ({
 
       setMessages((prev) => [...prev, aiMsg]);
       sound.playCorrect();
-    } catch (err: any) {
+    } catch (err) {
       const errorMsg: Message = {
         id: `err-${Date.now()}`,
         sender: 'ai',
-        text: `⚠️ Ошибка: ${err.message || 'Не удалось связаться с Gemini API.'}`,
+        text: `⚠️ Ошибка: ${err instanceof Error && err.message ? err.message : 'Не удалось связаться с Gemini API.'}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
